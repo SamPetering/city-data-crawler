@@ -1,1 +1,0 @@
-Population in year: (?<=Population in 20\d\d:<\/b>[\s])(\b\d[\d,.]*\b)*
