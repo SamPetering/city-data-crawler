@@ -1,71 +1,130 @@
 import { getCities, getCity } from './api';
-import { CityData, City, MarketInfo, State, StateData } from './types';
+import {
+  CityData,
+  City,
+  MarketInfo,
+  State,
+  CityOverview,
+  ExtractedCityData,
+} from './types';
 import cheerio from 'cheerio';
 import { stateManifest } from './states';
+import * as fs from 'fs';
 
-const getCityListData = async (cityList: City[]) => {
-  try {
-    let statesObj: StateData = {};
-    while (cityList.length) {
-      const currentCity = cityList.pop();
-      if (currentCity) {
-        const city = currentCity.cityName.split(' ').join('-');
-        const state = currentCity.state.split(' ').join('-');
-        const resp = await getCity(city, state);
-        if (resp) {
-          const html: string = resp.data;
-          const cityData = extractCityData(html);
-          statesObj[currentCity.cityName] = cityData;
-        }
-      }
-    }
-    console.log(statesObj);
-  } catch (e) {
-    console.log(e);
-  }
-};
+const extractCityData = (html: string): ExtractedCityData => {
+  let extractedCityName = '';
+  let population: number = null;
+  let populationChange: string = null;
+  let medianIncome: number = null;
+  let medianIncomeIn2000: number = null;
+  let medianHouseValue: number = null;
+  let medianHouseValueIn2000: number = null;
+  let crime: number = null;
+  let crimeIn2006: number = null;
 
-const extractCityData = (html: string): CityData => {
-  let population: number | undefined = undefined;
-  let name = '';
   let $ = cheerio.load(html);
 
   let cityHeader = $('.city');
-  name = cityHeader.text();
+  extractedCityName = cityHeader.text();
 
-  let populationSection = $('.city-population');
-  const populationRegex = /(?<=Population in 20\d\d:<\/b>[\s])(\b\d[\d,.]*\b)*/;
-  const matches = populationRegex.exec(populationSection.toString());
-  if (matches) {
-    population = Number(matches[0].replace(',', ''));
+  // get population and populationChange
+  const populationSection = $('.city-population').toString();
+  const populationRegex = /(?<=Population in \d{4}:<\/b>[\s])([\d,.]*)/;
+  const populationChangeRegex =
+    /(?<=Population change since \d{4}:<\/b>[\s])([+\-\d.%]*)/;
+  const populationMatch = populationRegex.exec(populationSection);
+  const populationChangeMatch = populationChangeRegex.exec(populationSection);
+  if (populationMatch[0]) {
+    population = Number(populationMatch[0].replace(',', ''));
+  }
+  if (populationChangeMatch[0]) {
+    populationChange = populationChangeMatch[0];
   }
 
+  // get medianIncome and medianIncomeIn2000
+  // get medianHouseValue and medianHouseValueIn2000
+  const medianIncomeSectionText = $('.median-income').text();
+  const medianIncomeRegex =
+    /(?<=Estimated median household income in \d{4}:\s)([$\d,.]*)([\s(a-z$\d,)]*)/;
+  const medianHouseValueRegex =
+    /(?<=Estimated median house or condo value in \d{4}:\s)([$\d,.]*)([\s(a-z$\d,)]*)/;
+  const medianIncomeMatch = medianIncomeRegex.exec(medianIncomeSectionText);
+  const medianHouseValueMatch = medianHouseValueRegex.exec(
+    medianIncomeSectionText
+  );
+  if (medianIncomeMatch[1]) {
+    medianIncome = Number(medianIncomeMatch[1].split(/[$,]/).join(''));
+  }
+  if (medianIncomeMatch[2]) {
+    const stripped = /[$][\d,]*/.exec(medianIncomeMatch[2]);
+    medianIncomeIn2000 = Number(stripped[0].split(/[$,]/).join(''));
+  }
+  if (medianHouseValueMatch[1]) {
+    medianHouseValue = Number(medianHouseValueMatch[1].split(/[$,]/).join(''));
+  }
+  if (medianHouseValueMatch[2]) {
+    const stripped = /[$][\d,]*/.exec(medianHouseValueMatch[2]);
+    medianHouseValueIn2000 = Number(stripped[0].split(/[$,]/).join(''));
+  }
+
+  // get crime and crimIn2006
+  const crimeTableFooterDataText = $('#crimeTab > tfoot > tr')
+    .children('td')
+    .text()
+    .replace(/.*index/, '')
+    .split(/\.\d/);
+  crimeIn2006 = Number(crimeTableFooterDataText[0]);
+  crime = Number(crimeTableFooterDataText[crimeTableFooterDataText.length - 2]);
+
   return {
-    name,
+    extractedCityName,
     population,
+    populationChange,
+    medianIncome,
+    medianIncomeIn2000,
+    medianHouseValue,
+    medianHouseValueIn2000,
+    crime,
+    crimeIn2006,
   };
 };
 
-const extractCities = (html: string, removeString: string) => {
+const extractCities = (html: string, removeString: string): CityOverview[] => {
   console.log('extracting cities');
-  let cities: string[] = [];
+  let cityOverviews: CityOverview[] = [];
   let $ = cheerio.load(html);
   let citiesTable = $('#cityTAB');
   let tableBody = citiesTable.children('tbody');
   let rows = tableBody.children();
+
   rows.each((_, element) => {
-    const cityName = $(element).children('td').eq(1).text();
-    cities.push(cityName);
+    const name = $(element).children('td').eq(1).text();
+    const population = Number(
+      $(element).children('td').eq(2).text().replace(',', '')
+    );
+    cityOverviews.push({ name, population });
   });
-  cities.forEach((city, index) => {
-    cities[index] = city.replace(removeString, '').trim();
+
+  cityOverviews.forEach((city, index) => {
+    cityOverviews[index] = {
+      ...city,
+      name: city.name.replace(removeString, '').trim(),
+    };
   });
-  return cities;
+  return cityOverviews;
 };
 
-const getMarketInfo = async (states: State[]): Promise<MarketInfo> => {
-  console.log('getting market info');
-  console.log(states);
+const getMarketInfo = async (
+  states: State[],
+  popLimit?: number
+): Promise<MarketInfo> => {
+  const timestamp = Date.now();
+  console.log(
+    `getting market info for ${states.length} state${
+      states.length > 1 ? 's' : ''
+    }`
+  );
+  console.log(states.map((x) => x.abbr));
 
   const marketInfo: MarketInfo = {};
   let allCities: City[] = [];
@@ -78,11 +137,18 @@ const getMarketInfo = async (states: State[]): Promise<MarketInfo> => {
       if (resp) {
         const html = resp.data;
         const removeString = `, ${currentState.abbr}`;
-        const cities = extractCities(html, removeString);
+        let cities = extractCities(html, removeString);
+
+        //filter out low population cities
+        if (popLimit) {
+          cities = cities.filter((x) => x.population >= popLimit);
+        }
+
         const citiesMap: City[] = cities.map((city) => ({
-          cityName: city,
-          state: currentState.name,
+          cityName: city.name,
+          stateName: currentState.name,
         }));
+
         allCities = [...allCities, ...citiesMap];
       }
     }
@@ -90,14 +156,19 @@ const getMarketInfo = async (states: State[]): Promise<MarketInfo> => {
 
   //get each city's city data
   if (allCities.length) {
-    console.log(`getting data for ${allCities.length} cities.`);
+    console.log(
+      `getting data for ${allCities.length} cit${
+        allCities.length > 1 ? 'ies' : 'y'
+      }.`
+    );
     const allCityData = await Promise.all(allCities.map(getCityData));
     console.log(allCityData);
+    //write to /results
+    fs.writeFileSync(
+      `${__dirname}/results/city-data-${timestamp}.json`,
+      JSON.stringify(allCityData)
+    );
   }
-
-  //map cities to state
-
-  //return object of all states
 
   console.log('finished');
   return marketInfo;
@@ -108,11 +179,33 @@ const trimName = (x: string) => x.split(/[\s']/).join('-');
 const getCityData = async (city: City): Promise<CityData | null> => {
   try {
     const c = trimName(city.cityName);
-    const s = trimName(city.state);
+    const s = trimName(city.stateName);
     const resp = await getCity(c, s);
     if (resp) {
       const html: string = resp.data;
-      const cityData = extractCityData(html);
+
+      const {
+        population,
+        populationChange,
+        medianIncome,
+        medianIncomeIn2000,
+        medianHouseValue,
+        medianHouseValueIn2000,
+        crime,
+        crimeIn2006,
+      } = extractCityData(html);
+
+      const cityData: CityData = {
+        ...city,
+        population,
+        populationChange,
+        medianIncome,
+        medianIncomeIn2000,
+        medianHouseValue,
+        medianHouseValueIn2000,
+        crime,
+        crimeIn2006,
+      };
       return cityData;
     } else {
       return null;
@@ -122,4 +215,4 @@ const getCityData = async (city: City): Promise<CityData | null> => {
   }
 };
 
-getMarketInfo(stateManifest);
+getMarketInfo(stateManifest, 50000);

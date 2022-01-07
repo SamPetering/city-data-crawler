@@ -6,13 +6,19 @@
   "dependencies": {
     "axios": "^0.24.0",
     "cheerio": "^1.0.0-rc.10",
+    "fs": "^0.0.1-security",
     "node": "^17.3.0",
     "nodemon": "^2.0.15",
     "ts-node": "^10.4.0",
     "typescript": "^4.5.4"
   },
   "scripts": {
-    "dev": "nodemon index.ts"
+    "dev": "nodemon --ignore index.ts"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "results/"
+    ]
   },
   "devDependencies": {
     "@types/node": "^17.0.8"
