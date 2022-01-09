@@ -12,10 +12,12 @@ export const wait = async (ms: number): Promise<void> => {
   await sleep(o_o);
 };
 
-export const convertToCSV = (obj: any) => {
+export const convertToCSV = (obj: any, headers?: string[]) => {
   const array = typeof obj != 'object' ? JSON.parse(obj) : obj;
   let str = '';
-
+  if (headers) {
+    str += headers.join(',') + '\r\n';
+  }
   for (var i = 0; i < array.length; i++) {
     var line = '';
     for (var index in array[i]) {

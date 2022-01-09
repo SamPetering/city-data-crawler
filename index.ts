@@ -25,7 +25,7 @@ const getMarketInfo = async (states: State[], popLimit: number) => {
 
   //write to /results
   if (allCityData.length) {
-    const csv = convertToCSV(allCityData);
+    const csv = convertToCSV(allCityData, Object.keys(allCityData[0]));
     const json = JSON.stringify(allCityData);
     const outputFileName = `${__dirname}/results/city-data-LIMIT${popLimit}-${statesJoined}-${timestamp}`;
     fs.writeFileSync(`${outputFileName}.json`, json);
