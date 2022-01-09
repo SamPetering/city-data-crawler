@@ -12,6 +12,25 @@ import { stateManifest } from './states';
 import * as fs from 'fs';
 import { wait } from './utility';
 
+const POPULATION_LIMIT = 100000;
+
+const convertToCSV = (obj: any) => {
+  const array = typeof obj != 'object' ? JSON.parse(obj) : obj;
+  let str = '';
+
+  for (var i = 0; i < array.length; i++) {
+    var line = '';
+    for (var index in array[i]) {
+      if (line != '') line += ',';
+
+      line += array[i][index];
+    }
+    str += line + '\r\n';
+  }
+
+  return str;
+};
+
 const extractCityData = (html: string): ExtractedCityData => {
   let extractedCityName = '';
   let population: number = null;
@@ -117,13 +136,15 @@ const extractCities = (html: string, removeString: string): CityOverview[] => {
 
 const getMarketInfo = async (
   states: State[],
-  popLimit?: number
+  popLimit: number
 ): Promise<MarketInfo> => {
   const timestamp = Date.now();
+  const statesJoined = states.map((x) => x.abbr).join('-');
+
   console.log(
     `getting market info for ${states.length} state${
       states.length > 1 ? 's' : ''
-    }`
+    }. Population limit: ${popLimit}`
   );
   console.log(states.map((x) => x.abbr));
 
@@ -164,20 +185,21 @@ const getMarketInfo = async (
     );
 
     const allCityData: CityData[] = [];
+
     while (allCities.length) {
-      wait(1000);
+      wait(2000);
       const currentCity = allCities.shift();
       console.log('getting data for: ', currentCity);
       const cityData = await getCityData(currentCity);
       allCityData.push(cityData);
     }
-    console.log(allCityData);
 
     //write to /results
-    fs.writeFileSync(
-      `${__dirname}/results/city-data-${timestamp}.json`,
-      JSON.stringify(allCityData)
-    );
+    const csv = convertToCSV(allCityData);
+    const json = JSON.stringify(allCityData);
+    const outputFileName = `${__dirname}/results/city-data-LIMIT${popLimit}-${statesJoined}-${timestamp}`;
+    fs.writeFileSync(`${outputFileName}.json`, json);
+    fs.writeFileSync(`${outputFileName}.csv`, csv);
   }
 
   console.log('finished');
@@ -225,4 +247,4 @@ const getCityData = async (city: City): Promise<CityData | null> => {
   }
 };
 
-getMarketInfo(stateManifest, 50000);
+getMarketInfo(stateManifest, POPULATION_LIMIT);

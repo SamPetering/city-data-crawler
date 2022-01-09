@@ -8,5 +8,6 @@ const shake = (base: number, rangePercentage: number): number => {
 
 export const wait = async (ms: number): Promise<void> => {
   const o_o = shake(ms, 0.1);
+  console.info(`Waiting ${o_o} ms`);
   await sleep(o_o);
 };
