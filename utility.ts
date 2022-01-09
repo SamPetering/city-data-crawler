@@ -11,3 +11,22 @@ export const wait = async (ms: number): Promise<void> => {
   console.info(`Waiting ${o_o} ms`);
   await sleep(o_o);
 };
+
+export const convertToCSV = (obj: any) => {
+  const array = typeof obj != 'object' ? JSON.parse(obj) : obj;
+  let str = '';
+
+  for (var i = 0; i < array.length; i++) {
+    var line = '';
+    for (var index in array[i]) {
+      if (line != '') line += ',';
+
+      line += array[i][index];
+    }
+    str += line + '\r\n';
+  }
+
+  return str;
+};
+
+export const trimName = (x: string) => x.split(/[\s']/).join('-');
