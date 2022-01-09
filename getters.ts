@@ -6,13 +6,14 @@ import { wait, trimName } from './utility';
 export const getAllCities = async (states: State[], popLimit: number) => {
   let cityOverviews: CityOverview[] = [];
   while (states.length) {
-    let currentState = states.pop();
+    let currentState = states.shift();
     if (currentState) {
       console.info(`getting cities in ${currentState.stateName}`);
       let resp = await getCities(currentState.stateName.split(' ').join('-'));
       if (resp) {
         const html = resp.data;
-        cityOverviews = extractCities(html, currentState);
+        const extractedCities = extractCities(html, currentState);
+        cityOverviews.push(...extractedCities);
 
         //filter out low population cities
         if (popLimit) {
