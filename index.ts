@@ -1,4 +1,4 @@
-import { MarketInfo, State } from './types';
+import { State } from './types';
 import { stateManifest } from './states';
 import { convertToCSV } from './utility';
 import * as fs from 'fs';
@@ -6,10 +6,7 @@ import { getAllCities, getAllCityData } from './getters';
 
 const POPULATION_LIMIT = 100000;
 
-const getMarketInfo = async (
-  states: State[],
-  popLimit: number
-): Promise<MarketInfo> => {
+const getMarketInfo = async (states: State[], popLimit: number) => {
   const timestamp = Date.now();
   const statesJoined = states.map((x) => x.abbr).join('-');
 
@@ -19,8 +16,6 @@ const getMarketInfo = async (
     }. Population limit: ${popLimit}`
   );
   console.log(states.map((x) => x.abbr));
-
-  const marketInfo: MarketInfo = {};
 
   //get cities in state
   const allCities = await getAllCities(states, popLimit);
@@ -37,7 +32,6 @@ const getMarketInfo = async (
     fs.writeFileSync(`${outputFileName}.csv`, csv);
   }
   console.log('finished');
-  return marketInfo;
 };
 
 getMarketInfo(stateManifest, POPULATION_LIMIT);

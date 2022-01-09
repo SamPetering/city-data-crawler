@@ -1,7 +1,3 @@
-export type MarketInfo = {
-  [key: string]: CityData;
-};
-
 export type City = {
   cityName: string;
   stateName: string;
