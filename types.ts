@@ -15,6 +15,7 @@ type MarketData = {
 };
 
 export type CityData = City & MarketData;
+
 export interface State {
   stateName: string;
   stateAbbr: string;
