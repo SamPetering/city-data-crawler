@@ -1,37 +1,33 @@
 import { getCities, getCity } from './api';
 import { extractCities, extractCityData } from './extractors';
-import { State, City, CityData } from './types';
+import { State, CityData, CityOverview } from './types';
 import { wait, trimName } from './utility';
 
 export const getAllCities = async (states: State[], popLimit: number) => {
-  let allCities: City[] = [];
+  let cityOverviews: CityOverview[] = [];
   while (states.length) {
     let currentState = states.pop();
     if (currentState) {
-      let resp = await getCities(currentState.name.split(' ').join('-'));
+      console.info(`getting cities in ${currentState.stateName}`);
+      let resp = await getCities(currentState.stateName.split(' ').join('-'));
       if (resp) {
         const html = resp.data;
-        const removeString = `, ${currentState.abbr}`;
-        let cities = extractCities(html, removeString);
+        cityOverviews = extractCities(html, currentState);
 
         //filter out low population cities
         if (popLimit) {
-          cities = cities.filter((x) => x.population >= popLimit);
+          cityOverviews = cityOverviews.filter((x) => x.population >= popLimit);
         }
-
-        const citiesMap: City[] = cities.map((city) => ({
-          cityName: city.name,
-          stateName: currentState.name,
-        }));
-
-        allCities = [...allCities, ...citiesMap];
       }
     }
   }
-  return allCities;
+  console.info(
+    `found ${cityOverviews.length} cities with populations over ${popLimit}`
+  );
+  return cityOverviews;
 };
 
-export const getAllCityData = async (allCities: City[]) => {
+export const getAllCityData = async (allCities: CityOverview[]) => {
   console.log(
     `getting data for ${allCities.length} cit${
       allCities.length > 1 ? 'ies' : 'y'
@@ -50,11 +46,15 @@ export const getAllCityData = async (allCities: City[]) => {
   return allCityData;
 };
 
-const getCityData = async (city: City): Promise<CityData | null> => {
+const getCityData = async ({
+  cityName,
+  stateName,
+  href,
+}: CityOverview): Promise<CityData | null> => {
   try {
-    const c = trimName(city.cityName);
-    const s = trimName(city.stateName);
-    const resp = await getCity(c, s);
+    const c = trimName(cityName);
+    const s = trimName(stateName);
+    const resp = await getCity(c, s, href);
     if (resp) {
       const html: string = resp.data;
 
@@ -70,7 +70,8 @@ const getCityData = async (city: City): Promise<CityData | null> => {
       } = extractCityData(html);
 
       const cityData: CityData = {
-        ...city,
+        cityName,
+        stateName,
         population,
         populationChange,
         medianIncome,

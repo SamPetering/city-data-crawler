@@ -1,4 +1,4 @@
-import { ExtractedCityData, CityOverview } from './types';
+import { ExtractedCityData, CityOverview, State } from './types';
 import cheerio from 'cheerio';
 
 export const extractCityData = (html: string): ExtractedCityData => {
@@ -81,9 +81,9 @@ export const extractCityData = (html: string): ExtractedCityData => {
 
 export const extractCities = (
   html: string,
-  removeString: string
+  { stateName, stateAbbr }: State
 ): CityOverview[] => {
-  console.log('extracting cities');
+  const removeString = `, ${stateAbbr}`;
   let cityOverviews: CityOverview[] = [];
   let $ = cheerio.load(html);
   let citiesTable = $('#cityTAB');
@@ -91,17 +91,19 @@ export const extractCities = (
   let rows = tableBody.children();
 
   rows.each((_, element) => {
-    const name = $(element).children('td').eq(1).text();
+    const nameEl = $(element).children('td').eq(1);
+    const href = nameEl.find('a').attr('href');
+    const cityName = nameEl.text();
     const population = Number(
       $(element).children('td').eq(2).text().replace(',', '')
     );
-    cityOverviews.push({ name, population });
+    cityOverviews.push({ href, cityName, population, stateName });
   });
 
   cityOverviews.forEach((city, index) => {
     cityOverviews[index] = {
       ...city,
-      name: city.name.replace(removeString, '').trim(),
+      cityName: city.cityName.replace(removeString, '').trim(),
     };
   });
   return cityOverviews;

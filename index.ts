@@ -8,14 +8,14 @@ const POPULATION_LIMIT = 100000;
 
 const getMarketInfo = async (states: State[], popLimit: number) => {
   const timestamp = Date.now();
-  const statesJoined = states.map((x) => x.abbr).join('-');
+  const statesJoined = states.map((x) => x.stateAbbr).join('-');
 
   console.log(
     `getting market info for ${states.length} state${
       states.length > 1 ? 's' : ''
     }. Population limit: ${popLimit}`
   );
-  console.log(states.map((x) => x.abbr));
+  console.log(states.map((x) => x.stateAbbr));
 
   //get cities in state
   const allCities = await getAllCities(states, popLimit);

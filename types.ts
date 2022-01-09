@@ -16,14 +16,14 @@ type MarketData = {
 
 export type CityData = City & MarketData;
 export interface State {
-  name: string;
-  abbr: string;
+  stateName: string;
+  stateAbbr: string;
 }
 
 export type ExtractedCityData = MarketData & {
   extractedCityName: string;
 };
-export interface CityOverview {
-  name: string;
+export type CityOverview = City & {
   population: number;
-}
+  href: string;
+};
