@@ -10,11 +10,12 @@ import {
 import cheerio from 'cheerio';
 import { stateManifest } from './states';
 import * as fs from 'fs';
+import { wait } from './utility';
 
 const extractCityData = (html: string): ExtractedCityData => {
   let extractedCityName = '';
   let population: number = null;
-  let populationChange: string = null;
+  let populationChange: number = null;
   let medianIncome: number = null;
   let medianIncomeIn2000: number = null;
   let medianHouseValue: number = null;
@@ -31,14 +32,14 @@ const extractCityData = (html: string): ExtractedCityData => {
   const populationSection = $('.city-population').toString();
   const populationRegex = /(?<=Population in \d{4}:<\/b>[\s])([\d,.]*)/;
   const populationChangeRegex =
-    /(?<=Population change since \d{4}:<\/b>[\s])([+\-\d.%]*)/;
+    /(?<=Population change since \d{4}:<\/b>[\s])([+\-\d.]*)/;
   const populationMatch = populationRegex.exec(populationSection);
   const populationChangeMatch = populationChangeRegex.exec(populationSection);
-  if (populationMatch[0]) {
+  if (populationMatch?.length && populationMatch[0]) {
     population = Number(populationMatch[0].replace(',', ''));
   }
-  if (populationChangeMatch[0]) {
-    populationChange = populationChangeMatch[0];
+  if (populationChangeMatch?.length && populationChangeMatch[0]) {
+    populationChange = Number(populationChangeMatch[0].replace(',', ''));
   }
 
   // get medianIncome and medianIncomeIn2000
@@ -52,17 +53,17 @@ const extractCityData = (html: string): ExtractedCityData => {
   const medianHouseValueMatch = medianHouseValueRegex.exec(
     medianIncomeSectionText
   );
-  if (medianIncomeMatch[1]) {
+  if (medianIncomeMatch?.length && medianIncomeMatch[1]) {
     medianIncome = Number(medianIncomeMatch[1].split(/[$,]/).join(''));
   }
-  if (medianIncomeMatch[2]) {
+  if (medianIncomeMatch?.length && medianIncomeMatch[2]) {
     const stripped = /[$][\d,]*/.exec(medianIncomeMatch[2]);
     medianIncomeIn2000 = Number(stripped[0].split(/[$,]/).join(''));
   }
-  if (medianHouseValueMatch[1]) {
+  if (medianHouseValueMatch?.length && medianHouseValueMatch[1]) {
     medianHouseValue = Number(medianHouseValueMatch[1].split(/[$,]/).join(''));
   }
-  if (medianHouseValueMatch[2]) {
+  if (medianHouseValueMatch?.length && medianHouseValueMatch[2]) {
     const stripped = /[$][\d,]*/.exec(medianHouseValueMatch[2]);
     medianHouseValueIn2000 = Number(stripped[0].split(/[$,]/).join(''));
   }
@@ -133,7 +134,7 @@ const getMarketInfo = async (
   while (states.length) {
     let currentState = states.pop();
     if (currentState) {
-      let resp = await getCities(currentState.name);
+      let resp = await getCities(currentState.name.split(' ').join('-'));
       if (resp) {
         const html = resp.data;
         const removeString = `, ${currentState.abbr}`;
@@ -161,8 +162,17 @@ const getMarketInfo = async (
         allCities.length > 1 ? 'ies' : 'y'
       }.`
     );
-    const allCityData = await Promise.all(allCities.map(getCityData));
+
+    const allCityData: CityData[] = [];
+    while (allCities.length) {
+      wait(1000);
+      const currentCity = allCities.shift();
+      console.log('getting data for: ', currentCity);
+      const cityData = await getCityData(currentCity);
+      allCityData.push(cityData);
+    }
     console.log(allCityData);
+
     //write to /results
     fs.writeFileSync(
       `${__dirname}/results/city-data-${timestamp}.json`,

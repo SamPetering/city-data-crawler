@@ -1,0 +1,12 @@
+const sleep = (o_o: number): Promise<void> =>
+  new Promise((O_O) => setTimeout(O_O, Math.ceil(o_o)));
+
+const shake = (base: number, rangePercentage: number): number => {
+  const n = base * rangePercentage;
+  return base + Math.floor(Math.random() * n * 2 + 1) - n;
+};
+
+export const wait = async (ms: number): Promise<void> => {
+  const o_o = shake(ms, 0.1);
+  await sleep(o_o);
+};

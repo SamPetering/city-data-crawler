@@ -9,7 +9,7 @@ export type City = {
 
 type MarketData = {
   population: number | null;
-  populationChange: string | null;
+  populationChange: number | null;
   medianIncome: number | null;
   medianIncomeIn2000: number | null;
   medianHouseValue: number | null;
