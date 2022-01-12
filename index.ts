@@ -4,7 +4,7 @@ import { convertToCSV } from './utility';
 import * as fs from 'fs';
 import { getAllCities, getAllCityData } from './getters';
 
-const POPULATION_LIMIT = 100000;
+const POPULATION_LIMIT = 70000;
 
 const getMarketInfo = async (states: State[], popLimit: number) => {
   const timestamp = Date.now();
