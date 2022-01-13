@@ -14,6 +14,6 @@ configuration:
 
 `yarn dev` to run
 
-`ctrl+c` on the script has completed
+`ctrl+c` once the script has completed
 
 the results will be written to `./results/`
